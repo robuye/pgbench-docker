@@ -1,0 +1,86 @@
+version: '3.0'
+services:
+  postgres:
+    image: $DOCKER_IMAGE
+    environment:
+      POSTGRES_PASSWORD: $DATABASE_PASSWORD
+      POSTGRES_USER: $DATABASE_USER
+      POSTGRES_DB: $DATABASE_NAME
+    command: [
+      "postgres",
+      ## Concurrency
+      "-c", "superuser_reserved_connections=0",
+      "-c", "max_wal_senders=0", # disables replication, it's ok
+      "-c", "max_connections=100",
+      ## Logging
+      "-c", "logging_collector=off",
+      "-c", "log_destination=stderr",
+      "-c", "log_min_messages=error",
+      # what to log
+      "-c", "log_statement=none", # 'all', 'none'
+      "-c", "log_duration=off",
+      "-c", "log_connections=off",
+      "-c", "log_disconnections=off",
+      "-c", "log_statement_stats=off",
+    ]
+
+  wait-for-db:
+    image: $DOCKER_IMAGE
+    environment:
+      PGAPPNAME: wait-for-db
+      PGHOST: $DATABASE_HOST
+      PGUSER: $DATABASE_USER
+      PGPASSWORD: $DATABASE_PASSWORD
+      PGDATABASE: $DATABASE_NAME
+    volumes:
+      - $PWD:/code
+    depends_on:
+      - postgres
+    command: ["/code/wait-for-db.sh"]
+
+  pgbench-init:
+    image: $DOCKER_IMAGE
+    environment:
+      PGAPPNAME: pgbench-init
+      PGHOST: $DATABASE_HOST
+      PGUSER: $DATABASE_USER
+      PGPASSWORD: $DATABASE_PASSWORD
+      PGDATABASE: $DATABASE_NAME
+    command: [
+      "pgbench",
+      "-i", # initialize
+      "-s", $PGBENCH_SCALE # scale
+    ]
+
+  pgbench:
+    image: $DOCKER_IMAGE
+    environment:
+      PGAPPNAME: pgbench
+      PGHOST: $DATABASE_HOST
+      PGUSER: $DATABASE_USER
+      PGPASSWORD: $DATABASE_PASSWORD
+      PGDATABASE: $DATABASE_NAME
+    command: [
+      "pgbench",
+      "-c", $PGBENCH_CLIENTS,
+      "-s", $PGBENCH_SCALE,
+      "-R", $PGBENCH_RATE,
+      "-j", $PGBENCH_THREADS,
+      "-T", $PGBENCH_DURATION,
+      "-b", $PGBENCH_SCRIPT,
+      "-P", "1", # show progress every 1 sec
+      "--report-latencies",
+      "pgbench" # database name
+    ]
+
+  psql:
+    image: $DOCKER_IMAGE
+    environment:
+      PGAPPNAME: psql
+      PGHOST: $DATABASE_HOST
+      PGUSER: $DATABASE_USER
+      PGPASSWORD: $DATABASE_PASSWORD
+      PGDATABASE: $DATABASE_NAME
+    command: [
+      "psql"
+    ]
