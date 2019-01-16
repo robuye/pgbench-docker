@@ -73,6 +73,19 @@ services:
       "pgbench" # database name
     ]
 
+  pgdump:
+    image: $DOCKER_IMAGE
+    environment:
+      PGAPPNAME: pgdump
+      PGHOST: $DATABASE_HOST
+      PGUSER: $DATABASE_USER
+      PGPASSWORD: $DATABASE_PASSWORD
+      PGDATABASE: $DATABASE_NAME
+    command: [
+      "pg_dump",
+      "-F", $PG_DUMP_FORMAT
+    ]
+
   psql:
     image: $DOCKER_IMAGE
     environment:
